@@ -18,7 +18,8 @@ import (
 
 func main() {
 	var outputFlag = flag.String("o", "", "Output format. 'json' outputs server json")
-	var countryFlag = flag.String("c", "ch", "Server country code, e.g. ch for Switzerland")
+	var countryFlag = flag.String("c", "ca", "Server country code, e.g. ca for Canada")
+	var cityFlag = flag.String("d", "all", "City code, e.g. tor for Toronto in Canada")
 	var typeFlag = flag.String("t", "wireguard", "Server type, e.g. wireguard")
 	var logLevel = flag.String("l", "info", "Log level. Allowed values: trace, debug, info, warn, error, fatal, panic")
 	flag.Parse()
@@ -29,7 +30,7 @@ func main() {
 	}
 	zerolog.SetGlobalLevel(level)
 	servers := getServers(*typeFlag)
-	bestIndex := selectBestServerIndex(servers, *countryFlag)
+	bestIndex := selectBestServerIndex(servers, *countryFlag, *cityFlag)
 	if bestIndex == -1 {
 		log.Fatal().Str("country", *countryFlag).Msg("No servers for country found.")
 	}
@@ -47,11 +48,15 @@ func main() {
 	}
 }
 
-func selectBestServerIndex(servers []server, country string) int {
+func selectBestServerIndex(servers []server, country string, city string) int {
 	bestIndex := -1
 	var bestPing time.Duration
 	for i, server := range servers {
 		if server.Active && server.CountryCode == country {
+			if city != "all" && server.CityCode != city {
+				continue
+			}
+
 			duration, err := serverLatency(server)
 			if err == nil {
 				if bestIndex == -1 || bestPing > duration {
